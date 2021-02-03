@@ -12,7 +12,7 @@ creator.create("Individual", list, fitness=FitnessMin)
 
 
 def init_individual(size):
-    return creator.Individual(Utils.init_individual(size))
+    return creator.Individual(Utils.get_instance().init_individual(size))
 
 
 def run_ga():
@@ -20,7 +20,7 @@ def run_ga():
     toolbox.register("individual", init_individual, len(Utils.get_instance().data))
     toolbox.register("population", tools.initRepeat, list, toolbox.individual)
     toolbox.register("mate", tools.cxTwoPoint)
-    toolbox.register("mutate", Utils.mutate_flip_bit, ind_pb=0.3)
+    toolbox.register("mutate", Utils.get_instance().mutate_flip_bit, ind_pb=0.5)
     toolbox.register("select", tools.selTournament, tournsize=20)
 
     toolbox.register("evaluate", Utils.get_instance().cal_fitness)
