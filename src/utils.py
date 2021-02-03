@@ -1,4 +1,6 @@
-from config.arg_parser import parse_config
+import glob
+
+from src.arg_parser import parse_config
 import pandas as pd
 from scipy.spatial import distance
 import elkai
@@ -12,13 +14,16 @@ class Utils:
     def __init__(self):
         constants, ga_config, self.data_path = parse_config()
 
+        self.data_files = glob.glob(self.data_path)
+
         self.speed = constants["speed"]
-        self.data = pd.read_csv(self.data_path, header=None).to_numpy()[:-1]
+        self.data = pd.read_csv(self.data_files[0], header=None).to_numpy()[:-1]
         self.terminate = ga_config["terminate"]
         self.pop_size = ga_config["pop_size"]
         self.num_generation = ga_config["num_generation"]
         self.cx_pb = ga_config["cx_pb"]
         self.mut_pb = ga_config["mut_pb"]
+        self.num_run = ga_config["num_run"]
         self.i_pot = self.data[0, 1:3]
         self.num_drones = 3
 
@@ -27,6 +32,9 @@ class Utils:
         if cls.__utils is None:
             cls.__utils = Utils()
         return cls.__utils
+
+    def change_data(self, path):
+        self.data = pd.read_csv(path, header=None).to_numpy()[:-1]
 
     def cal_time2serve_by_truck(self, individual: list):
         city_served_by_truck_list = [i for i, v in enumerate(individual) if v == 0]
