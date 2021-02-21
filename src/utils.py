@@ -83,6 +83,15 @@ class Utils:
                 individual[i] = type(individual[i])(not individual[i])
         return individual,
 
+    def cal_drone_time_matrix(self):
+        pass
+
+    def cal_truck_time_matrix(self):
+        pass
+
+    def get_nodes_can_served_by_drone(self):
+        pass
+
 
 if __name__ == '__main__':
     print(Utils.get_instance().cal_fitness([0, 0, 1]))
