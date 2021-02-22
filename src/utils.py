@@ -27,11 +27,11 @@ class Utils:
         self.num_run = ga_config["num_run"]
         self.i_pot = self.data[0, 1:3]
         self.num_drones = 3
-        self.drone_distance = [distance.euclidean((self.data[i, 1:3]), self.i_pot)
+        self.drone_distances = [distance.euclidean((self.data[i, 1:3]), self.i_pot)
                                if self.data[i, 3] == 1 else float('inf')
-                               for i in range(len(self.data))]
-        self.truck_distance = [[distance.cityblock(self.data[i, 1:3], self.data[j, 1:3])
-                                for i in range(len(self.data))] for j in range(len(self.data))]
+                                for i in range(len(self.data))]
+        self.truck_distances = [[distance.cityblock(self.data[i, 1:3], self.data[j, 1:3])
+                                 for i in range(len(self.data))] for j in range(len(self.data))]
 
     @classmethod
     def get_instance(cls):
@@ -44,14 +44,14 @@ class Utils:
 
     def cal_time2serve_by_truck(self, individual: list):
         city_served_by_truck_list = [i for i, v in enumerate(individual) if v == 0]
-        cost_matrix = np.array([[self.truck_distance[i][j]
+        cost_matrix = np.array([[self.truck_distances[i][j]
                                 for i in city_served_by_truck_list] for j in city_served_by_truck_list])
         route = elkai.solve_float_matrix(cost_matrix)
         return sum([distance.cityblock(self.data[route[i], 1:3], self.data[route[i + 1], 1:3])
                     for i in range(-1, len(route) - 1)]) / self.speed
 
     def cal_time2serve_by_drones(self, individual: list):
-        dist_list = [self.drone_distance[i] for i in individual if i != 0]
+        dist_list = [self.drone_distances[i] for i in individual if i != 0]
 
         if self.num_drones == 1:
             return 2 / self.speed * sum(dist_list)
@@ -89,12 +89,11 @@ class Utils:
         return individual,
 
     def cal_drone_time_matrix(self):
-        return [2 / self.speed * distance.euclidean((self.data[i, 1:3]), self.i_pot)
-                if self.data[i, 3] == 1 else float('inf')
+        return [2 / self.speed * self.drone_distances[i]
                 for i in range(len(self.data))]
 
     def cal_truck_time_matrix(self):
-        return [[distance.cityblock(self.data[i, 1:3], self.data[j, 1:3]) / self.speed
+        return [[self.truck_distances[i][j] / self.speed
                  for i in range(len(self.data))] for j in range(len(self.data))]
 
     def get_nodes_can_served_by_drone(self):
