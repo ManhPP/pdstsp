@@ -100,13 +100,10 @@ class Utils:
         return [i for i in range(1, len(self.data)) if self.data[i, 3] == 1]
 
     def get_sub_node_lists(self):
-        subs = []
         for i in range(1, len(self.data) + 1):
-            subs.extend([list(x) for x in combinations(range(len(self.data)), i)])
-
-        for i in subs:
-            if 0 in i:
-                yield i
+            for j in combinations(range(len(self.data)), i):
+                if 0 in j:
+                    yield j
 
 
 if __name__ == '__main__':
