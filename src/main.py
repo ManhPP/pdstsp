@@ -1,14 +1,8 @@
-import os
-
 import numpy as np
 from deap import base, creator, tools, algorithms
 
-os.path.abspath(os.path.join('..'))
-os.path.abspath(os.path.join('../../'))
-
 from init_log import init_log
 from utils import Utils
-
 
 creator.create("FitnessMin", base.Fitness, weights=(-1.,))
 FitnessMin = creator.FitnessMin
@@ -74,7 +68,7 @@ def run_ga(logger):
                 count_term = 0
 
             pop[:] = invalid_individuals[:]
-
+            logger.info(f"{time} - {_} : {b}")
             prev = b
             if count_term == Utils.get_instance().terminate:
                 break
