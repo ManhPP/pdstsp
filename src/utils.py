@@ -18,6 +18,7 @@ class Utils:
         self.data_files = glob.glob(self.data_path)
 
         self.speed = constants["speed"]
+        self.num_drones = constants["num_drones"]
         self.data = pd.read_csv(self.data_files[0], header=None).to_numpy()[:-1]
         self.terminate = ga_config["terminate"]
         self.pop_size = ga_config["pop_size"]
@@ -26,7 +27,6 @@ class Utils:
         self.mut_pb = ga_config["mut_pb"]
         self.num_run = ga_config["num_run"]
         self.i_pot = self.data[0, 1:3]
-        self.num_drones = 3
         self.drone_distances = [distance.euclidean((self.data[i, 1:3]), self.i_pot)
                                 if self.data[i, 3] == 1 else float('inf')
                                 for i in range(len(self.data))]

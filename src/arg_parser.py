@@ -20,6 +20,7 @@ def parse_config():
     parser.read(f"{config_file_path}/config/config.ini")
     dict_constant = dict()
     dict_constant["speed"] = parser.getfloat("CONSTANT", "speed")
+    dict_constant["num_drones"] = parser.getint("CONSTANT", "num_drones")
     data_path = f"{config_file_path}/{parser.get('PATH', 'data_path')}"
     dict_ga_config = dict()
     dict_ga_config["terminate"] = parser.getint("GA", "terminate")
