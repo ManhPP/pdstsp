@@ -2,8 +2,8 @@ import os
 
 from ortools.linear_solver import pywraplp
 
-from src.init_log import init_log
-from src.utils import Utils
+from init_log import init_log
+from utils import Utils
 
 lib_path = os.path.abspath(os.path.join('..'))
 

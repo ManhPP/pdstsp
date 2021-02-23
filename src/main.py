@@ -3,10 +3,12 @@ import os
 import numpy as np
 from deap import base, creator, tools, algorithms
 
-from src.init_log import init_log
-from src.utils import Utils
+os.path.abspath(os.path.join('..'))
+os.path.abspath(os.path.join('../../'))
 
-lib_path = os.path.abspath(os.path.join('..'))
+from init_log import init_log
+from utils import Utils
+
 
 creator.create("FitnessMin", base.Fitness, weights=(-1.,))
 FitnessMin = creator.FitnessMin

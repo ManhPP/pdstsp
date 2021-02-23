@@ -1,7 +1,7 @@
 import glob
 from itertools import combinations
 
-from src.arg_parser import parse_config
+from arg_parser import parse_config
 import pandas as pd
 from scipy.spatial import distance
 import elkai
@@ -28,7 +28,7 @@ class Utils:
         self.i_pot = self.data[0, 1:3]
         self.num_drones = 3
         self.drone_distances = [distance.euclidean((self.data[i, 1:3]), self.i_pot)
-                               if self.data[i, 3] == 1 else float('inf')
+                                if self.data[i, 3] == 1 else float('inf')
                                 for i in range(len(self.data))]
         self.truck_distances = [[distance.cityblock(self.data[i, 1:3], self.data[j, 1:3])
                                  for i in range(len(self.data))] for j in range(len(self.data))]
@@ -45,7 +45,7 @@ class Utils:
     def cal_time2serve_by_truck(self, individual: list):
         city_served_by_truck_list = [i for i, v in enumerate(individual) if v == 0]
         cost_matrix = np.array([[self.truck_distances[i][j]
-                                for i in city_served_by_truck_list] for j in city_served_by_truck_list])
+                                 for i in city_served_by_truck_list] for j in city_served_by_truck_list])
         route = elkai.solve_float_matrix(cost_matrix)
         return sum([distance.cityblock(self.data[route[i], 1:3], self.data[route[i + 1], 1:3])
                     for i in range(-1, len(route) - 1)]) / self.speed
