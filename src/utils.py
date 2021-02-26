@@ -1,6 +1,6 @@
 import glob
 from itertools import combinations
-
+from init_log import init_log
 from arg_parser import parse_config
 import pandas as pd
 from scipy.spatial import distance
@@ -16,8 +16,9 @@ class Utils:
         constants, ga_config, self.data_path = parse_config()
 
         self.data_files = glob.glob(self.data_path)
-
-        self.speed = constants["speed"]
+        self.truck_speed = constants["truck_speed"]
+        self.drone_speed = constants["drone_speed"] 
+        # self.speed = constants["speed"]
         self.num_drones = constants["num_drones"]
         self.data = pd.read_csv(self.data_files[0], header=None).to_numpy()[:-1]
         self.terminate = ga_config["terminate"]
@@ -46,19 +47,21 @@ class Utils:
         city_served_by_truck_list = [i for i, v in enumerate(individual) if v == 0]
         cost_matrix = np.array([[self.truck_distances[i][j]
                                  for i in city_served_by_truck_list] for j in city_served_by_truck_list])
-        route = elkai.solve_float_matrix(cost_matrix)
-        return sum([distance.cityblock(self.data[route[i], 1:3], self.data[route[i + 1], 1:3])
-                    for i in range(-1, len(route) - 1)]) / self.speed
+        route = elkai.solve_float_matrix(cost_matrix, runs=1)
+        
+        return (sum([distance.cityblock(self.data[route[i], 1:3], self.data[route[i + 1], 1:3]) for i in range(-1, len(route) - 1)]) / self.truck_speed)
+
+
 
     def cal_time2serve_by_drones(self, individual: list):
         dist_list = [self.drone_distances[i] for i in individual if i != 0]
 
         if self.num_drones == 1:
-            return 2 / self.speed * sum(dist_list)
+            return 2 / self.drone_speed * sum(dist_list)
 
         dist_list.sort()
         if len(dist_list) < self.num_drones:
-            return 2 * dist_list.pop() / self.speed
+            return 2 * dist_list.pop() / self.drone_speed
 
         drones = np.zeros(self.num_drones)
         for i in range(self.num_drones):
@@ -71,7 +74,7 @@ class Utils:
             drones[0] = dist_list.pop()
 
         dist += max(drones)
-        return 2 * dist / self.speed
+        return 2 * dist / self.drone_speed
 
     def cal_fitness(self, individual: list):
         return max(self.cal_time2serve_by_truck(individual=individual),
@@ -89,11 +92,11 @@ class Utils:
         return individual,
 
     def cal_drone_time_matrix(self):
-        return [2 / self.speed * self.drone_distances[i]
+        return [2 / self.drone_speed * self.drone_distances[i]
                 for i in range(len(self.data))]
 
     def cal_truck_time_matrix(self):
-        return [[self.truck_distances[i][j] / self.speed
+        return [[self.truck_distances[i][j] / self.truck_speed
                  for i in range(len(self.data))] for j in range(len(self.data))]
 
     def get_nodes_can_served_by_drone(self):
@@ -105,9 +108,32 @@ class Utils:
                 if 0 in j:
                     yield j
 
+    def cxRandomRespect(self, ind1, ind2):
+        for i in range(0, len(ind1), 1):
+            if ind1[i] != ind2[i]:
+                ind1[i] = random.randint(0, 1)
+                ind2[i] = random.randint(0, 1)
+        return ind1, ind2
 
 if __name__ == '__main__':
-    print(Utils.get_instance().cal_fitness([0, 0, 1]))
-    var = Utils.get_instance()
-    for _ in range(10):
-        print(Utils.get_instance().init_individual(5))
+    # print(Utils.get_instance().cal_fitness([0, 0, 1]))
+    # var = Utils.get_instance()
+    # for _ in range(10):
+    #     print(Utils.get_instance().init_individual(5))
+    logger = init_log()
+    result = []
+    logger.info("runs = 10 / runs = 1: ")
+    for i in range(15):
+        ind = Utils.get_instance().init_individual(len(Utils.get_instance().data))
+        comp = Utils.get_instance().cal_time2serve_by_truck(ind)
+        logger.info("No " + str(i) + ": " + str(comp))
+        result.append(comp)
+    
+    avg = np.mean(result)
+    std = np.std(result)
+    mi = np.min(result)
+    ma = np.max(result)
+    logger.info([mi, ma, avg, std])
+
+
+
