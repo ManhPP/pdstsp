@@ -1,6 +1,6 @@
 import numpy as np
 from deap import base, creator, tools, algorithms
-
+from scipy.spatial import distance
 from init_log import init_log
 from utils import Utils
 
@@ -27,11 +27,12 @@ def run_ga(logger):
     toolbox = base.Toolbox()
     toolbox.register("individual", init_individual, len(Utils.get_instance().data))
     toolbox.register("population", tools.initRepeat, list, toolbox.individual)
-    toolbox.register("mate", tools.cxTwoPoint)
+    # toolbox.register("mate", tools.cxTwoPoint)
+    toolbox.register("mate", Utils.get_instance().cxRandomRespect)
     toolbox.register("mutate", Utils.get_instance().mutate_flip_bit, ind_pb=0.5)
     toolbox.register("select", tools.selTournament, tournsize=20)
-
     toolbox.register("evaluate", Utils.get_instance().cal_fitness)
+
     for time in range(Utils.get_instance().num_run):
         pop = toolbox.population(Utils.get_instance().pop_size)
         best_ind = toolbox.clone(pop[0])
