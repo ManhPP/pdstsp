@@ -1,8 +1,8 @@
 import numpy as np
 from deap import base, creator, tools, algorithms
-from scipy.spatial import distance
 from init_log import init_log
 from utils import Utils
+from utils import cx_random_respect
 
 creator.create("FitnessMin", base.Fitness, weights=(-1.,))
 FitnessMin = creator.FitnessMin
@@ -28,7 +28,7 @@ def run_ga(logger):
     toolbox.register("individual", init_individual, len(Utils.get_instance().data))
     toolbox.register("population", tools.initRepeat, list, toolbox.individual)
     # toolbox.register("mate", tools.cxTwoPoint)
-    toolbox.register("mate", Utils.get_instance().cxRandomRespect)
+    toolbox.register("mate", cx_random_respect)
     toolbox.register("mutate", Utils.get_instance().mutate_flip_bit, ind_pb=0.5)
     toolbox.register("select", tools.selTournament, tournsize=20)
     toolbox.register("evaluate", Utils.get_instance().cal_fitness)

@@ -9,6 +9,14 @@ import numpy as np
 import random
 
 
+def cx_random_respect(ind1, ind2):
+    for i in range(0, len(ind1), 1):
+        if ind1[i] != ind2[i]:
+            ind1[i] = random.randint(0, 1)
+            ind2[i] = random.randint(0, 1)
+    return ind1, ind2
+
+
 class Utils:
     __utils = None
 
@@ -17,7 +25,7 @@ class Utils:
 
         self.data_files = glob.glob(self.data_path)
         self.truck_speed = constants["truck_speed"]
-        self.drone_speed = constants["drone_speed"] 
+        self.drone_speed = constants["drone_speed"]
         # self.speed = constants["speed"]
         self.num_drones = constants["num_drones"]
         self.data = pd.read_csv(self.data_files[0], header=None).to_numpy()[:-1]
@@ -47,14 +55,12 @@ class Utils:
         city_served_by_truck_list = [i for i, v in enumerate(individual) if v == 0]
         cost_matrix = np.array([[self.truck_distances[i][j]
                                  for i in city_served_by_truck_list] for j in city_served_by_truck_list])
-        route = elkai.solve_float_matrix(cost_matrix, runs=1)
-        
-        return (sum([distance.cityblock(self.data[route[i], 1:3], self.data[route[i + 1], 1:3]) for i in range(-1, len(route) - 1)]) / self.truck_speed)
+        route_index = elkai.solve_float_matrix(cost_matrix, runs=1)
 
-
+        return sum([cost_matrix[i][i + 1] for i in range(-1, len(route_index) - 1)]) / self.truck_speed
 
     def cal_time2serve_by_drones(self, individual: list):
-        dist_list = [self.drone_distances[i] for i in individual if i != 0]
+        dist_list = [self.drone_distances[index] for index, value in enumerate(individual) if value != 0]
 
         if self.num_drones == 1:
             return 2 / self.drone_speed * sum(dist_list)
@@ -108,12 +114,6 @@ class Utils:
                 if 0 in j:
                     yield j
 
-    def cxRandomRespect(self, ind1, ind2):
-        for i in range(0, len(ind1), 1):
-            if ind1[i] != ind2[i]:
-                ind1[i] = random.randint(0, 1)
-                ind2[i] = random.randint(0, 1)
-        return ind1, ind2
 
 if __name__ == '__main__':
     # print(Utils.get_instance().cal_fitness([0, 0, 1]))
@@ -128,12 +128,9 @@ if __name__ == '__main__':
         comp = Utils.get_instance().cal_time2serve_by_truck(ind)
         logger.info("No " + str(i) + ": " + str(comp))
         result.append(comp)
-    
+
     avg = np.mean(result)
     std = np.std(result)
     mi = np.min(result)
     ma = np.max(result)
     logger.info([mi, ma, avg, std])
-
-
-
