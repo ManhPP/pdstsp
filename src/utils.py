@@ -29,6 +29,13 @@ class Utils:
         # self.speed = constants["speed"]
         self.num_drones = constants["num_drones"]
         self.data = pd.read_csv(self.data_files[0], header=None).to_numpy()[:-1]
+
+        for i in self.data:
+            if i[3] == 0:
+                i[3] = 1
+            else:
+                i[3] = 0
+
         self.terminate = ga_config["terminate"]
         self.pop_size = ga_config["pop_size"]
         self.num_generation = ga_config["num_generation"]
