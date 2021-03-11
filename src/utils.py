@@ -10,10 +10,10 @@ import random
 
 
 def cx_random_respect(ind1, ind2):
-    for i in range(0, len(ind1), 1):
+    for i in range(0, len(ind1)):
         if ind1[i] != ind2[i]:
-            ind1[i] = random.randint(0, 1)
-            ind2[i] = random.randint(0, 1)
+            if random.uniform(0, 1) < 0.5:
+                ind1[i], ind2[i] = ind2[i], ind1[i]
     return ind1, ind2
 
 
