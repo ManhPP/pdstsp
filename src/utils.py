@@ -29,12 +29,7 @@ class Utils:
         # self.speed = constants["speed"]
         self.num_drones = constants["num_drones"]
         self.data = pd.read_csv(self.data_files[0], header=None).to_numpy()[:-1]
-
-        for i in self.data:
-            if i[3] == 0:
-                i[3] = 1
-            else:
-                i[3] = 0
+        self.reverse_drone_can_serve()
 
         self.terminate = ga_config["terminate"]
         self.pop_size = ga_config["pop_size"]
@@ -57,6 +52,16 @@ class Utils:
 
     def change_data(self, path):
         self.data = pd.read_csv(path, header=None).to_numpy()[:-1]
+        self.reverse_drone_can_serve()
+
+    def reverse_drone_can_serve(self):
+        for i in self.data:
+            if i[3] == 0:
+                i[3] = 1
+            else:
+                i[3] = 0
+
+        self.data[0, 3] = 0
 
     def cal_time2serve_by_truck(self, individual: list):
         city_served_by_truck_list = [i for i, v in enumerate(individual) if v == 0]
