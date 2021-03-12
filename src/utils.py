@@ -53,6 +53,12 @@ class Utils:
     def change_data(self, path):
         self.data = pd.read_csv(path, header=None).to_numpy()[:-1]
         self.reverse_drone_can_serve()
+        self.i_pot = self.data[0, 1:3]
+        self.drone_distances = [distance.euclidean((self.data[i, 1:3]), self.i_pot)
+                                if self.data[i, 3] == 1 else float('inf')
+                                for i in range(len(self.data))]
+        self.truck_distances = [[distance.cityblock(self.data[i, 1:3], self.data[j, 1:3])
+                                 for i in range(len(self.data))] for j in range(len(self.data))]
 
     def reverse_drone_can_serve(self):
         for i in self.data:
