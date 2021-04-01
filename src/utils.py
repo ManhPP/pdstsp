@@ -69,16 +69,29 @@ class Utils:
 
         self.data[0, 3] = 0
 
-    def cal_time2serve_by_truck(self, individual: list):
-        city_served_by_truck_list = [i for i, v in enumerate(individual) if v == 0]
-        cost_matrix = np.array([[self.truck_distances[i][j]
-                                 for i in city_served_by_truck_list] for j in city_served_by_truck_list])
-        route_index = elkai.solve_float_matrix(cost_matrix, runs=1)
+    def cal_time2serve_by_truck(self, individual: list, new_method=False):
+        result = 0
+        if not new_method:
+            city_served_by_truck_list = [i for i, v in enumerate(individual) if v == 0]
+            cost_matrix = np.array([[self.truck_distances[i][j]
+                                     for i in city_served_by_truck_list] for j in city_served_by_truck_list])
+            route_index = elkai.solve_float_matrix(cost_matrix, runs=1)
+            result = sum([cost_matrix[i][i + 1] for i in range(-1, len(route_index) - 1)]) / self.truck_speed
 
-        return sum([cost_matrix[i][i + 1] for i in range(-1, len(route_index) - 1)]) / self.truck_speed
+        else:
+            result = 0
+            for i in individual:
+                if individual[i] != -1:
+                    if i+1 not in individual:
+                        result += self.truck_distances[0][i+1]
+                    else:
+                        result += self.truck_distances[individual[i]][i+1]
+        return result
 
-    def cal_time2serve_by_drones(self, individual: list):
+    def cal_time2serve_by_drones(self, individual: list, new_method=False):
         dist_list = [self.drone_distances[index] for index, value in enumerate(individual) if value != 0]
+        if new_method:
+            dist_list = [self.drone_distances[index + 1] for index, value in enumerate(individual) if value == -1]
 
         if self.num_drones == 1:
             return 2 / self.drone_speed * sum(dist_list)
@@ -132,23 +145,38 @@ class Utils:
                 if 0 in j:
                     yield j
 
+    def init_individual_new_method(self):
+        size = len(self.data) - 1
+
+        ind = [-1] * size
+
+        cus_can_served_by_drone = [i for i in range(1, size + 1) if self.data[i, 3] == 1]
+        cus_served_by_drone = random.sample(cus_can_served_by_drone,
+                                            k=random.randint(0, len(cus_can_served_by_drone)))
+        # for i in cus_served_by_drone:
+        #     ind[i - 1] = 0
+
+        cus_served_by_truck = [i for i in range(1, size + 1) if i not in cus_served_by_drone]
+        cur = 0
+        while len(cus_served_by_truck) > 0:
+            cus_served_by_truck.sort(key=lambda x: self.truck_distances[cur][x])
+
+            ind[cus_served_by_truck[0] - 1] = cur
+            cur = cus_served_by_truck[0]
+            cus_served_by_truck.remove(cur)
+        return ind
+
+    def cal_fitness_new_method(self, individual):
+        return max(self.cal_time2serve_by_truck(individual=individual, new_method=True),
+                   self.cal_time2serve_by_drones(individual=individual, new_method=True))
+
+    def crossover_new_method(self):
+        pass
+
+    def mutate_new_method(self):
+        pass
+
 
 if __name__ == '__main__':
-    # print(Utils.get_instance().cal_fitness([0, 0, 1]))
-    # var = Utils.get_instance()
-    # for _ in range(10):
-    #     print(Utils.get_instance().init_individual(5))
-    logger = init_log()
-    result = []
-    logger.info("runs = 10 / runs = 1: ")
     for i in range(15):
-        ind = Utils.get_instance().init_individual(len(Utils.get_instance().data))
-        comp = Utils.get_instance().cal_time2serve_by_truck(ind)
-        logger.info("No " + str(i) + ": " + str(comp))
-        result.append(comp)
-
-    avg = np.mean(result)
-    std = np.std(result)
-    mi = np.min(result)
-    ma = np.max(result)
-    logger.info([mi, ma, avg, std])
+        ind = Utils.get_instance().init_individual_new_method()
