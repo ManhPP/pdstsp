@@ -1,3 +1,4 @@
+import bisect
 import glob
 from itertools import combinations
 from init_log import init_log
@@ -82,10 +83,10 @@ class Utils:
             result = 0
             for i in individual:
                 if individual[i] != -1:
-                    if i+1 not in individual:
-                        result += self.truck_distances[0][i+1]
+                    if i + 1 not in individual:
+                        result += self.truck_distances[0][i + 1]
                     else:
-                        result += self.truck_distances[individual[i]][i+1]
+                        result += self.truck_distances[individual[i]][i + 1]
         return result
 
     def cal_time2serve_by_drones(self, individual: list, new_method=False):
@@ -145,6 +146,10 @@ class Utils:
                 if 0 in j:
                     yield j
 
+    """
+        new method
+    """
+
     def init_individual_new_method(self):
         size = len(self.data) - 1
 
@@ -166,17 +171,88 @@ class Utils:
             cus_served_by_truck.remove(cur)
         return ind
 
+    @staticmethod
+    def get_cus_served_by_drone(ind):
+        return [i + 1 for i, v in enumerate(ind) if v == -1]
+
+    @staticmethod
+    def get_cus_served_by_truck(ind):
+        result = []
+        cur = 0
+        while cur in ind:
+            cur = ind.index(cur) + 1
+            result.append(cur)
+
+        return result
+
     def cal_fitness_new_method(self, individual):
         return max(self.cal_time2serve_by_truck(individual=individual, new_method=True),
                    self.cal_time2serve_by_drones(individual=individual, new_method=True))
 
-    def crossover_new_method(self):
-        pass
+    def crossover_new_method(self, ind1, ind2):
+        cus_served_by_truck1 = self.get_cus_served_by_truck(ind1)
+        cus_served_by_truck2 = self.get_cus_served_by_truck(ind2)
 
-    def mutate_new_method(self):
-        pass
+        same_truck_cus = set(cus_served_by_truck1).intersection(cus_served_by_truck2)
+        same_truck_cus_i1 = []
+        same_truck_cus_i2 = []
+        for i in same_truck_cus:
+            bisect.insort(same_truck_cus_i1, cus_served_by_truck1.index(i))
+            bisect.insort(same_truck_cus_i2, cus_served_by_truck2.index(i))
+
+        order1 = [cus_served_by_truck1[i] for i in same_truck_cus_i1]
+        order2 = [cus_served_by_truck2[i] for i in same_truck_cus_i2]
+
+        for i, v in enumerate(same_truck_cus_i1):
+            cus_served_by_truck1[v] = order2[i]
+
+        for i, v in enumerate(same_truck_cus_i2):
+            cus_served_by_truck2[v] = order1[i]
+
+        for i, v in enumerate(cus_served_by_truck1):
+            if i == 0:
+                ind1[v-1] = 0
+            else:
+                ind1[v-1] = cus_served_by_truck1[i-1]
+
+        for i, v in enumerate(cus_served_by_truck2):
+            if i == 0:
+                ind2[v-1] = 0
+            else:
+                ind2[v-1] = cus_served_by_truck2[i-1]
+
+        return ind1, ind2
+
+    def mutate_new_method(self, ind, prob):
+        cus_served_by_drone = self.get_cus_served_by_drone(ind)
+        cus_served_by_truck = self.get_cus_served_by_truck(ind)
+
+        if random.random() < prob:
+            i1, i2 = random.sample(range(len(ind)), k=2)
+            cus1, cus2 = i1 + 1, i2 + 1
+            while (cus1 in cus_served_by_drone and cus2 in cus_served_by_drone) \
+                    or (cus1 in cus_served_by_truck and cus2 in cus_served_by_drone and self.data[cus1, 3] == 0) \
+                    or (cus2 in cus_served_by_truck and cus1 in cus_served_by_drone and self.data[cus2 + 1, 3] == 0):
+                i1, i2 = random.sample(range(len(ind)), k=2)
+                cus1, cus2 = i1 + 1, i2 + 1
+
+            if cus2 in cus_served_by_drone:
+                i1, i2 = i2, i1
+                cus1, cus2 = i1 + 1, i2 + 1
+
+            if cus1 in cus_served_by_truck and cus2 in cus_served_by_truck:
+                if cus1 in ind:
+                    ind[ind.index(cus1)] = cus2
+                if i2 + 1 in ind:
+                    ind[ind.index(cus2)] = cus1
+            else:
+                ind[ind.index(cus2)] = cus1
+
+            ind[i1], ind[i2] = ind[i2], ind[i1]
+        return ind,
 
 
 if __name__ == '__main__':
-    for i in range(15):
-        ind = Utils.get_instance().init_individual_new_method()
+    a = [-1, -1, 0, 5, 7, 4, 3]
+    b = [5, 0, 1, -1, 2, -1, -1]
+    Utils.get_instance().crossover_new_method(a, b)
