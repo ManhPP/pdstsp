@@ -91,6 +91,6 @@ if __name__ == '__main__':
     log.info("Start running GA...")
 
     for path in Utils.get_instance().data_files:
-        Utils.get_instance().change_data(path)
+        Utils.get_instance().load_data(path)
         log.info("input path: %s" % path)
         run_ga(logger=log)

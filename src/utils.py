@@ -29,8 +29,6 @@ class Utils:
         self.drone_speed = constants["drone_speed"]
         # self.speed = constants["speed"]
         self.num_drones = constants["num_drones"]
-        self.data = pd.read_csv(self.data_files[0], header=None).to_numpy()[:-1]
-        self.reverse_drone_can_serve()
 
         self.terminate = ga_config["terminate"]
         self.pop_size = ga_config["pop_size"]
@@ -38,12 +36,14 @@ class Utils:
         self.cx_pb = ga_config["cx_pb"]
         self.mut_pb = ga_config["mut_pb"]
         self.num_run = ga_config["num_run"]
-        self.i_pot = self.data[0, 1:3]
-        self.drone_distances = [distance.euclidean((self.data[i, 1:3]), self.i_pot)
-                                if self.data[i, 3] == 1 else float('inf')
-                                for i in range(len(self.data))]
-        self.truck_distances = [[distance.cityblock(self.data[i, 1:3], self.data[j, 1:3])
-                                 for i in range(len(self.data))] for j in range(len(self.data))]
+
+        self.data = None
+        self.i_pot = None
+        self.cus_can_served_by_drone = None
+        self.drone_distances = None
+        self.truck_distances = None
+
+        self.load_data(self.data_files[0])
 
     @classmethod
     def get_instance(cls):
@@ -51,10 +51,11 @@ class Utils:
             cls.__utils = Utils()
         return cls.__utils
 
-    def change_data(self, path):
+    def load_data(self, path):
         self.data = pd.read_csv(path, header=None).to_numpy()[:-1]
         self.reverse_drone_can_serve()
         self.i_pot = self.data[0, 1:3]
+        self.cus_can_served_by_drone = [i for i in range(len(self.data)) if self.data[i, 3] == 1]
         self.drone_distances = [distance.euclidean((self.data[i, 1:3]), self.i_pot)
                                 if self.data[i, 3] == 1 else float('inf')
                                 for i in range(len(self.data))]
@@ -77,7 +78,7 @@ class Utils:
             cost_matrix = np.array([[self.truck_distances[i][j]
                                      for i in city_served_by_truck_list] for j in city_served_by_truck_list])
             route_index = elkai.solve_float_matrix(cost_matrix, runs=1)
-            result = sum([cost_matrix[i][i + 1] for i in range(-1, len(route_index) - 1)]) / self.truck_speed
+            result = sum([cost_matrix[i][i + 1] for i in range(-1, len(route_index) - 1)])
 
         else:
             result = 0
@@ -87,7 +88,8 @@ class Utils:
                         result += self.truck_distances[0][i + 1]
                     else:
                         result += self.truck_distances[individual[i]][i + 1]
-        return result
+
+        return result / self.truck_speed
 
     def cal_time2serve_by_drones(self, individual: list, new_method=False):
         dist_list = [self.drone_distances[index] for index, value in enumerate(individual) if value != 0]
@@ -211,48 +213,66 @@ class Utils:
 
         for i, v in enumerate(cus_served_by_truck1):
             if i == 0:
-                ind1[v-1] = 0
+                ind1[v - 1] = 0
             else:
-                ind1[v-1] = cus_served_by_truck1[i-1]
+                ind1[v - 1] = cus_served_by_truck1[i - 1]
 
         for i, v in enumerate(cus_served_by_truck2):
             if i == 0:
-                ind2[v-1] = 0
+                ind2[v - 1] = 0
             else:
-                ind2[v-1] = cus_served_by_truck2[i-1]
+                ind2[v - 1] = cus_served_by_truck2[i - 1]
 
         return ind1, ind2
 
-    def mutate_new_method(self, ind, prob):
+    def mutate_new_method(self, ind, prob=0.4, prob2=0.5):
         cus_served_by_drone = self.get_cus_served_by_drone(ind)
         cus_served_by_truck = self.get_cus_served_by_truck(ind)
 
         if random.random() < prob:
-            i1, i2 = random.sample(range(len(ind)), k=2)
-            cus1, cus2 = i1 + 1, i2 + 1
-            while (cus1 in cus_served_by_drone and cus2 in cus_served_by_drone) \
-                    or (cus1 in cus_served_by_truck and cus2 in cus_served_by_drone and self.data[cus1, 3] == 0) \
-                    or (cus2 in cus_served_by_truck and cus1 in cus_served_by_drone and self.data[cus2 + 1, 3] == 0):
+            if random.random() < prob2:
                 i1, i2 = random.sample(range(len(ind)), k=2)
                 cus1, cus2 = i1 + 1, i2 + 1
+                while (cus1 in cus_served_by_drone and cus2 in cus_served_by_drone) \
+                        or (cus1 in cus_served_by_truck and cus2 in cus_served_by_drone and self.data[cus1, 3] == 0) \
+                        or (
+                        cus2 in cus_served_by_truck and cus1 in cus_served_by_drone and self.data[cus2 + 1, 3] == 0):
+                    i1, i2 = random.sample(range(len(ind)), k=2)
+                    cus1, cus2 = i1 + 1, i2 + 1
 
-            if cus2 in cus_served_by_drone:
-                i1, i2 = i2, i1
-                cus1, cus2 = i1 + 1, i2 + 1
+                if cus2 in cus_served_by_drone:
+                    i1, i2 = i2, i1
+                    cus1, cus2 = i1 + 1, i2 + 1
 
-            if cus1 in cus_served_by_truck and cus2 in cus_served_by_truck:
-                if cus1 in ind:
-                    ind[ind.index(cus1)] = cus2
-                if i2 + 1 in ind:
+                if cus1 in cus_served_by_truck and cus2 in cus_served_by_truck:
+                    if cus1 in ind:
+                        ind[ind.index(cus1)] = cus2
+                    if i2 + 1 in ind:
+                        ind[ind.index(cus2)] = cus1
+                else:
                     ind[ind.index(cus2)] = cus1
-            else:
-                ind[ind.index(cus2)] = cus1
 
-            ind[i1], ind[i2] = ind[i2], ind[i1]
+                ind[i1], ind[i2] = ind[i2], ind[i1]
+            else:
+                cus = random.choice(self.cus_can_served_by_drone)
+
+                if ind[cus - 1] == -1:
+                    cus_served_by_truck.insert(random.randint(0, len(cus_served_by_truck)), cus)
+                    for i, v in enumerate(cus_served_by_truck):
+                        if i == 0:
+                            ind[v - 1] = 0
+                        else:
+                            ind[v - 1] = cus_served_by_truck[i - 1]
+
+                else:
+                    if cus in ind:
+                        ind[ind.index(cus)] = ind[cus-1]
+                    ind[cus - 1] = -1
+
         return ind,
 
 
 if __name__ == '__main__':
     a = [-1, -1, 0, 5, 7, 4, 3]
     b = [5, 0, 1, -1, 2, -1, -1]
-    Utils.get_instance().crossover_new_method(a, b)
+    Utils.get_instance().mutate_new_method(b, 1, 0)
