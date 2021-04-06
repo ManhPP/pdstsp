@@ -1,6 +1,10 @@
 import bisect
 import glob
 from itertools import combinations
+
+import networkx as nx
+import matplotlib.pyplot as plt
+
 from init_log import init_log
 from arg_parser import parse_config
 import pandas as pd
@@ -71,7 +75,7 @@ class Utils:
 
         self.data[0, 3] = 0
 
-    def cal_time2serve_by_truck(self, individual: list, new_method=False):
+    def cal_time2serve_by_truck(self, individual: list, new_method=True):
         result = 0
         if not new_method:
             city_served_by_truck_list = [i for i, v in enumerate(individual) if v == 0]
@@ -81,20 +85,22 @@ class Utils:
             result = sum([cost_matrix[i][i + 1] for i in range(-1, len(route_index) - 1)])
 
         else:
-            result = 0
-            for i in individual:
+            for i, v in enumerate(individual):
                 if individual[i] != -1:
                     if i + 1 not in individual:
                         result += self.truck_distances[0][i + 1]
                     else:
-                        result += self.truck_distances[individual[i]][i + 1]
+                        result += self.truck_distances[v][i + 1]
 
         return result / self.truck_speed
 
-    def cal_time2serve_by_drones(self, individual: list, new_method=False):
+    def cal_time2serve_by_drones(self, individual: list, new_method=True):
         dist_list = [self.drone_distances[index] for index, value in enumerate(individual) if value != 0]
         if new_method:
             dist_list = [self.drone_distances[index + 1] for index, value in enumerate(individual) if value == -1]
+
+        if len(dist_list) == 0:
+            return 0
 
         if self.num_drones == 1:
             return 2 / self.drone_speed * sum(dist_list)
@@ -179,6 +185,7 @@ class Utils:
 
     @staticmethod
     def get_cus_served_by_truck(ind):
+        # tmp = list(filter(lambda a: a != -1, ind))
         result = []
         cur = 0
         while cur in ind:
@@ -186,10 +193,6 @@ class Utils:
             result.append(cur)
 
         return result
-
-    def cal_fitness_new_method(self, individual):
-        return max(self.cal_time2serve_by_truck(individual=individual, new_method=True),
-                   self.cal_time2serve_by_drones(individual=individual, new_method=True))
 
     def crossover_new_method(self, ind1, ind2):
         cus_served_by_truck1 = self.get_cus_served_by_truck(ind1)
@@ -225,49 +228,48 @@ class Utils:
 
         return ind1, ind2
 
-    def mutate_new_method(self, ind, prob=0.4, prob2=0.5):
+    def mutate_new_method(self, ind, prob=0.5):
         cus_served_by_drone = self.get_cus_served_by_drone(ind)
         cus_served_by_truck = self.get_cus_served_by_truck(ind)
-
         if random.random() < prob:
-            if random.random() < prob2:
-                i1, i2 = random.sample(range(len(ind)), k=2)
-                cus1, cus2 = i1 + 1, i2 + 1
-                while (cus1 in cus_served_by_drone and cus2 in cus_served_by_drone) \
-                        or (cus1 in cus_served_by_truck and cus2 in cus_served_by_drone and self.data[cus1, 3] == 0) \
-                        or (
-                        cus2 in cus_served_by_truck and cus1 in cus_served_by_drone and self.data[cus2 + 1, 3] == 0):
-                    i1, i2 = random.sample(range(len(ind)), k=2)
-                    cus1, cus2 = i1 + 1, i2 + 1
+            cus1, cus2 = random.sample(range(1, len(ind)+1), k=2)
+            while (cus1 in cus_served_by_drone and cus2 in cus_served_by_drone) \
+                    or (cus1 in cus_served_by_truck and cus2 in cus_served_by_drone and self.data[cus1, 3] == 0) \
+                    or (cus2 in cus_served_by_truck and cus1 in cus_served_by_drone and self.data[cus2, 3] == 0):
+                cus1, cus2 = random.sample(range(1, len(ind) + 1), k=2)
 
-                if cus2 in cus_served_by_drone:
-                    i1, i2 = i2, i1
-                    cus1, cus2 = i1 + 1, i2 + 1
+            if cus2 in cus_served_by_drone:
+                cus1, cus2 = cus2, cus1
 
-                if cus1 in cus_served_by_truck and cus2 in cus_served_by_truck:
-                    if cus1 in ind:
-                        ind[ind.index(cus1)] = cus2
-                    if i2 + 1 in ind:
-                        ind[ind.index(cus2)] = cus1
-                else:
-                    ind[ind.index(cus2)] = cus1
-
-                ind[i1], ind[i2] = ind[i2], ind[i1]
+            if cus1 in cus_served_by_truck and cus2 in cus_served_by_truck:
+                i1, i2 = cus_served_by_truck.index(cus1), cus_served_by_truck.index(cus2)
+                cus_served_by_truck[i1], cus_served_by_truck[i2] = cus_served_by_truck[i2], cus_served_by_truck[i1]
             else:
-                cus = random.choice(self.cus_can_served_by_drone)
+                i2 = cus_served_by_truck.index(cus2)
+                cus_served_by_truck[i2] = cus1
+                ind[cus2 - 1] = -1
 
-                if ind[cus - 1] == -1:
-                    cus_served_by_truck.insert(random.randint(0, len(cus_served_by_truck)), cus)
-                    for i, v in enumerate(cus_served_by_truck):
-                        if i == 0:
-                            ind[v - 1] = 0
-                        else:
-                            ind[v - 1] = cus_served_by_truck[i - 1]
-
+            for i, v in enumerate(cus_served_by_truck):
+                if i == 0:
+                    ind[v - 1] = 0
                 else:
-                    if cus in ind:
-                        ind[ind.index(cus)] = ind[cus-1]
-                    ind[cus - 1] = -1
+                    ind[v - 1] = cus_served_by_truck[i - 1]
+
+        else:
+            cus = random.choice(self.cus_can_served_by_drone)
+
+            if ind[cus - 1] == -1:
+                cus_served_by_truck.insert(random.randint(0, len(cus_served_by_truck)), cus)
+                for i, v in enumerate(cus_served_by_truck):
+                    if i == 0:
+                        ind[v - 1] = 0
+                    else:
+                        ind[v - 1] = cus_served_by_truck[i - 1]
+
+            else:
+                if cus in ind:
+                    ind[ind.index(cus)] = ind[cus-1]
+                ind[cus - 1] = -1
 
         return ind,
 
@@ -275,4 +277,29 @@ class Utils:
 if __name__ == '__main__':
     a = [-1, -1, 0, 5, 7, 4, 3]
     b = [5, 0, 1, -1, 2, -1, -1]
-    Utils.get_instance().mutate_new_method(b, 1, 0)
+
+    Utils.get_instance().mutate_new_method(a, 1)
+
+    # d = [2, 21, 1, 3, 4, 9, 5, 7, 8, 11, 52, 16, 12, 13, 14, 20, 10, 17, 18, 19, 22, 15, 24, 25, 85, -1, -1, 6, -1,
+    # -1, -1, 40, -1, -1, -1, 28, -1, -1, -1, 43, -1, -1, 45, 213, 44, -1, 48, 49, 188, 184, 53, 51, 63, 55, 56, 57,
+    # 83, 54, 58, 59, 60, 61, 66, 62, 64, 65, 68, 69, 117, 71, 0, 70, 72, 75, 76, 77, 78, 73, 88, 87, 82, 84, 79, 23,
+    # 86, 89, 81, 80, 90, 91, 74, 36, -1, -1, -1, 104, -1, -1, -1, 92, 100, 101, 102, 32, -1, -1, -1, 113, -1, -1,
+    # -1, 103, 96, -1, 112, 120, 116, 115, 118, 123, 119, 121, 122, 108, -1, -1, -1, 124, 128, 129, 130, 131, -1,
+    # 136, 134, 137, 138, 132, 142, 141, 152, 140, 139, 143, 144, 145, 146, 147, -1, 204, 155, 153, 154, 151, 150,
+    # 159, 156, 157, 160, 161, 162, 199, 172, 163, 164, -1, -1, 176, -1, 148, -1, 135, 165, -1, -1, 173, -1, -1, -1,
+    # 168, -1, -1, -1, 47, -1, 180, 186, 189, 190, 191, 193, 194, 192, 195, 196, 198, 187, 197, 50, 223, 200, 203,
+    # 211, 158, 170, 205, 206, 207, 208, 209, 210, 201, 214, 215, 216, 219, 218, 227, 220, 212, 202, 221, 222, 225,
+    # 217, 228, 226, 229, 67]
+    #
+    # G = nx.Graph()
+    #
+    # for i, v in enumerate(d):
+    #     p = v
+    #     if v == -1:
+    #         continue
+    #
+    #     G.add_edge(p, i + 1)
+    # pos = nx.spring_layout(G, scale=5)
+    # nx.draw_networkx(G, pos)
+
+    plt.show()

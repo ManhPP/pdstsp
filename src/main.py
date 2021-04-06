@@ -9,8 +9,8 @@ FitnessMin = creator.FitnessMin
 creator.create("Individual", list, fitness=FitnessMin)
 
 
-def init_individual(size):
-    return creator.Individual(Utils.get_instance().init_individual(size))
+def init_individual():
+    return creator.Individual(Utils.get_instance().init_individual_new_method())
 
 
 def run_ga(logger):
@@ -25,12 +25,12 @@ def run_ga(logger):
     result = []
 
     toolbox = base.Toolbox()
-    toolbox.register("individual", init_individual, len(Utils.get_instance().data))
+    toolbox.register("individual", init_individual)
     toolbox.register("population", tools.initRepeat, list, toolbox.individual)
     # toolbox.register("mate", tools.cxTwoPoint)
-    toolbox.register("mate", cx_random_respect)
-    toolbox.register("mutate", Utils.get_instance().mutate_flip_bit, ind_pb=0.5)
-    toolbox.register("select", tools.selTournament, tournsize=20)
+    toolbox.register("mate", Utils.get_instance().crossover_new_method)
+    toolbox.register("mutate", Utils.get_instance().mutate_new_method)
+    toolbox.register("select", tools.selTournament, tournsize=10)
     toolbox.register("evaluate", Utils.get_instance().cal_fitness)
 
     for time in range(Utils.get_instance().num_run):
