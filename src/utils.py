@@ -1,17 +1,15 @@
 import bisect
 import glob
+import random
 from itertools import combinations
 
-import networkx as nx
+import elkai
 import matplotlib.pyplot as plt
-
-from init_log import init_log
-from arg_parser import parse_config
+import numpy as np
 import pandas as pd
 from scipy.spatial import distance
-import elkai
-import numpy as np
-import random
+
+from arg_parser import parse_config
 
 
 def cx_random_respect(ind1, ind2):
@@ -231,7 +229,7 @@ class Utils:
     def mutate_new_method(self, ind, prob=0.5):
         cus_served_by_drone = self.get_cus_served_by_drone(ind)
         cus_served_by_truck = self.get_cus_served_by_truck(ind)
-        if random.random() < prob:
+        if random.random() < prob and float('inf') in self.drone_distances[1:]:
             cus1, cus2 = random.sample(range(1, len(ind)+1), k=2)
             while (cus1 in cus_served_by_drone and cus2 in cus_served_by_drone) \
                     or (cus1 in cus_served_by_truck and cus2 in cus_served_by_drone and self.data[cus1, 3] == 0) \
