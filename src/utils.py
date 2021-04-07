@@ -120,9 +120,9 @@ class Utils:
         dist += max(drones)
         return 2 * dist / self.drone_speed
 
-    def cal_fitness(self, individual: list):
-        return max(self.cal_time2serve_by_truck(individual=individual),
-                   self.cal_time2serve_by_drones(individual=individual))
+    def cal_fitness(self, individual: list, new_method=True):
+        return max(self.cal_time2serve_by_truck(individual=individual, new_method=new_method),
+                   self.cal_time2serve_by_drones(individual=individual, new_method=new_method))
 
     def init_individual(self, size):
         ind = [random.randint(0, 1) if self.data[i, 3] == 1 else 0 for i in range(size)]
