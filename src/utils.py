@@ -229,7 +229,13 @@ class Utils:
     def mutate_new_method(self, ind, prob=0.5):
         cus_served_by_drone = self.get_cus_served_by_drone(ind)
         cus_served_by_truck = self.get_cus_served_by_truck(ind)
-        if random.random() < prob and float('inf') in self.drone_distances[1:]:
+        rate = random.random()
+        if len(self.cus_can_served_by_drone) == 0:
+            rate = -1
+        if float('inf') not in self.drone_distances[1:]:
+            rate = 2
+
+        if rate < prob:
             cus1, cus2 = random.sample(range(1, len(ind)+1), k=2)
             while (cus1 in cus_served_by_drone and cus2 in cus_served_by_drone) \
                     or (cus1 in cus_served_by_truck and cus2 in cus_served_by_drone and self.data[cus1, 3] == 0) \
@@ -254,7 +260,15 @@ class Utils:
                     ind[v - 1] = cus_served_by_truck[i - 1]
 
         else:
-            cus = random.choice(self.cus_can_served_by_drone)
+            time2serve_by_truck = self.cal_time2serve_by_truck(individual=ind, new_method=True)
+            time2serve_by_drones = self.cal_time2serve_by_drones(individual=ind, new_method=True)
+
+            if time2serve_by_drones > time2serve_by_truck:
+                cus = random.choice(cus_served_by_drone)
+            elif time2serve_by_drones < time2serve_by_truck:
+                cus = random.choice(cus_served_by_truck)
+            else:
+                cus = random.choice(self.cus_can_served_by_drone)
 
             if ind[cus - 1] == -1:
                 cus_served_by_truck.insert(random.randint(0, len(cus_served_by_truck)), cus)
